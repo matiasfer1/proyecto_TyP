@@ -1,0 +1,178 @@
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    <title>Sorteo de equipos </title>
+    
+    {% load static %}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'css/footer.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.0.3/css/font-awesome.css">
+
+</head>
+
+<body style="background-color: #efefef;">
+    <h1 style="margin-top: 20px">Sorteo de equipos</h1>
+    <br>
+    <form method="post">
+        {% csrf_token %}
+        <label for="nombre">Agregar Nombre: </label>
+        <input type="text" name="nombre" required>
+        <button type="submit" class="btn btn-primary btn-sm" >Agregar</button>
+    </form>
+    <table class="table table-striped">
+        <br>
+        <thead>
+            <tr>
+                <th scope="col">N°</th>
+                <th scope="col">Jugador</th>
+            </tr>
+        </thead>
+        <tbody class="table-group-divider">
+            
+            {% for nombre in nombres %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td id="edit_nombre_id{{ nombre.id }}">{{ nombre.nombre }}</td>
+                    
+                    <td>
+                        <form method="post" action="{% url 'eliminar_nombre' nombre.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>
+                            <button type="button" class="btn btn-warning btn-sm editar-btn"
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#exampleModal"
+                                    data-nombre-id="{{ nombre.id }}"
+                                    data-nombre="{{ nombre.nombre }}">Editar</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+
+        </tbody>
+    </table>
+    <!-- Modal -->
+    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Editar nombre</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-body">
+                    <form id="editar-form" method="post" action="">
+                        {% csrf_token %}
+                        <input type="hidden" id="edit-nombre-id" name="nombre_id" value="">
+                        <label for="nuevo_nombre">Nuevo Nombre:</label>
+                        <input type="text" id="edit-nuevo-nombre" name="nuevo_nombre" value="{{ nombre.nombre }}">
+                    </form>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="guardar-edicion">Guardar</button>
+            </div>
+            
+            
+        </div>
+        </div>
+    </div>
+
+    <form method="post" action="{% url 'eliminar_todos_nombres' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger btn-sm" style=float:right>Eliminar Todos</button>
+    </form>
+
+    <button id="load-data-button" class="btn btn-primary btn-lg">Sortear equipos</button>
+    <br><br>
+    <div id="result-container" class="table table-striped">
+        <h2>Tabla de equipos</h2>
+        <ol id="team-list"></ol>
+    </div>
+
+    <footer class="footer">
+        <p>Copyright Tibia y Perone F.C. 2023 - 
+            Todos los derechos e izquierdos bien puestos</p>
+    </footer>
+    
+    <script>
+    $(document).ready(function() {
+        $("#load-data-button").click(function() {
+            $.ajax({
+                url: "{% url 'sortear' %}",
+                type: "POST",
+                dataType: "json",
+                headers: {
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                success: function(response) {
+                    showTeamList(response.lista); // Llama a la función para mostrar la lista
+                },
+                error: function(xhr, status, error) {
+                    console.log("Error:", error);
+                }
+            });
+        });
+        
+        function showTeamList(lista) {
+            var teamList = $("#team-list");
+            teamList.empty(); // Limpia la lista existente
+            
+            for (var i = 0; i < lista.length; i++) {
+                var listItem = $("<li>").text(lista[i]);
+                teamList.append(listItem);
+                
+                if ((i + 1) % 5 === 0) {
+                    teamList.append("<br>");
+                }
+            }
+        }
+    });
+    </script>
+
+    <script>
+    $(document).ready(function() {
+        $(".editar-btn").click(function() {
+            var nombreId = $(this).data("nombre-id");
+            var nombre = $(this).data("nombre");
+            
+            $("#edit-nombre-id").val(nombreId);
+            $("#edit-nuevo-nombre").val(nombre);
+        });
+        
+        $("#guardar-edicion").click(function() {
+            var nombreId = $("#edit-nombre-id").val();
+            var nuevoNombre = $("#edit-nuevo-nombre").val();
+            console.log("id", nombreId);
+            console.log("nuevo", nuevoNombre);
+            
+            if (nombreId !== ""){
+                var url = "/App/editar_nombre/" + nombreId + "/";
+                $.ajax({
+                    url: url,
+                    type: "POST",
+                    data: {
+                        nombre_id: nombreId,
+                        nuevo_nombre: nuevoNombre,
+                        csrfmiddlewaretoken: "{{ csrf_token }}"
+                    },
+                    success: function(response) {
+                        window.location.reload();
+                    },
+                    error: function(xhr, status, error) {
+                        console.log("Error:", error);
+                    }
+                });
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
+
